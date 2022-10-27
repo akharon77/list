@@ -2,6 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "list.h"
+#include "list_debug.h"
+
+const uint32_t ERROR_SIZE_NEG      = 1 << 0,
+               ERROR_BUF_BAD_PTR   = 1 << 1,
+               ERROR_COMM_VIOL     = 1 << 2,
+               ERROR_ELEMS         = 1 << 3,
+               ERROR_FREE_INCORR   = 1 << 4,
+               ERROR_CYCLE_VIOL    = 1 << 5,
+               ERROR_CAP_NEG       = 1 << 6,
+               ERROR_SIZE_MISMATCH = 1 << 7,
+               ERROR_CAP_MISMATCH  = 1 << 8;
 
 void ListCtor(List *lst, int32_t size)
 {
@@ -19,16 +30,18 @@ void ListCtor(List *lst, int32_t size)
     for (int32_t i = 1; i < size + 1; ++i)
         lst->buf[i] = 
             {
-                .val  = -1,
-                .next = i + 1,
-                .prev = i - 1
+                .val   = -1,
+                .next  = i + 1,
+                .prev  = i - 1,
+                .empty = true
             };
 
     lst->buf[0] = 
         {
-            .val  = 0,
-            .next = 0,
-            .prev = 0 
+            .val   = 0,
+            .next  = 0,
+            .prev  = 0,
+            .empty = false
         };
 }
 
@@ -47,12 +60,15 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     int32_t npos = lst->free;
     lst->free = lst->buf[lst->free].next;
 
-    lst->buf[npos].val  = val;
-
     int32_t anch_prev = lst->buf[anch].prev;
 
-    lst->buf[npos].next = anch;
-    lst->buf[npos].prev = anch_prev;
+    lst->buf[npos].val  = 
+        {
+            .val   = val
+            .next  = anch,
+            .prev  = anch_prev,
+            .empty = false
+        };
 
     lst->buf[anch_prev].next = npos;
     lst->buf[anch].prev      = npos;
@@ -80,9 +96,10 @@ void ListErase(List *lst, int32_t anch)
 
     lst->buf[anch] = 
         {
-            .val = -1,
-            .next = lst->free,
-            .prev = -1
+            .val   = -1,
+            .next  = lst->free,
+            .prev  = -1,
+            .empty = true 
         };
 
     lst->free = anch;
@@ -154,10 +171,51 @@ void ListPrint(List *lst)
         printf("anch = %d, val = %d\n", v, lst->buf[v].val);
         v = ListGetNext(lst, v);
     }
+
     printf("\n");
 }
 
 uint32_t ListStatus(List *lst)
 {
-    
+    ASSERT(lst != NULL);
+
+    uint32_t flags = 0;
+
+    if (lst->size < 0)
+        flags |= ERROR_SIZE_NEG;
+    if (lst->cap  < 0)
+        flags |= ERROR_CAP_NEG;
+
+    if (isBadPtr(lst->buf))
+        flags |= ERROR_BUF_BAD_PTR;
+
+    if (!lst->buf[lst->free].empty)
+        flags |= ERROR_FREE_INCORR;
+
+    if (sizeof(lst->buf) / sizeof(Node) != lst->cap)
+        flags |= ERROR_CAP_MISMATCH;
+
+    int32_t cnt_not_empty = 0;
+    for (int32_t i = 0; i < lst->size; ++i)
+    {
+        if (!lst->buf[i].empty)
+        {
+            ++cnt_not_empty;
+            if (ListGetPrev(lst, ListGetNext(lst, i)) != i ||
+                ListGetNext(lst, ListGetPrev(lst, i)) != i)
+                flags |= ERROR_COMM_VIOL;
+        }
+    }
+}
+
+bool isBadPtr(void *ptr)
+{
+    if (ptr == NULL)
+        return true;
+
+    int nullfd = open("/dev/random", O_WRONLY);
+    bool res = write(nullfd, (char*) ptr, 1) < 0;
+
+    close(nullfd);
+    return res;
 }
