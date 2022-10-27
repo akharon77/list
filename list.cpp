@@ -9,7 +9,7 @@ const uint32_t ERROR_SIZE_NEG      = 1 << 0,
                ERROR_COMM_VIOL     = 1 << 2,
                ERROR_ELEMS         = 1 << 3,
                ERROR_FREE_INCORR   = 1 << 4,
-               ERROR_CYCLE_VIOL    = 1 << 5,
+
                ERROR_CAP_NEG       = 1 << 6,
                ERROR_SIZE_MISMATCH = 1 << 7,
                ERROR_CAP_MISMATCH  = 1 << 8;
@@ -189,6 +189,9 @@ uint32_t ListStatus(List *lst)
     if (isBadPtr(lst->buf))
         flags |= ERROR_BUF_BAD_PTR;
 
+    if (flags)
+        return flags;
+
     if (!lst->buf[lst->free].empty)
         flags |= ERROR_FREE_INCORR;
 
@@ -196,7 +199,7 @@ uint32_t ListStatus(List *lst)
         flags |= ERROR_CAP_MISMATCH;
 
     int32_t cnt_not_empty = 0;
-    for (int32_t i = 0; i < lst->size; ++i)
+    for (int32_t i = 0; i < lst->size + 1; ++i)
     {
         if (!lst->buf[i].empty)
         {
@@ -206,6 +209,12 @@ uint32_t ListStatus(List *lst)
                 flags |= ERROR_COMM_VIOL;
         }
     }
+
+    if (cnt_not_empty != lst->size)
+        flags |= ERROR_SIZE_MISMATCH;
+
+    if (flags)
+        return flags;
 }
 
 bool isBadPtr(void *ptr)
@@ -218,4 +227,26 @@ bool isBadPtr(void *ptr)
 
     close(nullfd);
     return res;
+}
+
+const char* ListErrorDesc(List *lst)
+{
+    uint32_t flags = ListStatus(lst);
+
+    if (flags & ERROR_SIZE_NEG)
+        return "Size of list is negative";
+    if (flags & ERROR_BUF_BAD_PTR)
+        return "Bad pointer to the elements of the list";
+    if (flags & ERROR_COMM_VIOL)
+        return "Broken ring structure between list items";
+    if (flags & ERROR_ELEMS)
+        return "Elements are wrong";
+    if (flags & ERROR_FREE_INCORR)
+        return "Bad pointer to the free section of list";
+    if (flags & ERROR_CAP_NEG)
+        return "Capacity of list is negative";
+    if (flags & ERROR_SIZE_MISMATCH)
+        return "Real size of list doesn't match to list size";
+    if (flags & ERROR_CAP_MISMATCH)
+        return "Real capacity of list doesn't mathc to list capacity";
 }

@@ -17,8 +17,6 @@ struct List
     Node    *buf;
 
     int32_t  free;
-
-    uint32_t flags;
 };
 
 #endif  // LIST_STRUCT_H
