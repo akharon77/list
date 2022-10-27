@@ -31,7 +31,7 @@ struct List
     int32_t  free;
 };
 
-void ListCtor             (List *lst, int32_t size);
+void     ListCtor         (List *lst, int32_t size);
 
 int32_t  ListInsertBefore (List *lst, int32_t val, int32_t anch);
 int32_t  ListInsertAfter  (List *lst, int32_t val, int32_t anch);
@@ -43,10 +43,12 @@ int32_t  ListPushFront    (List *lst, int32_t val);
 void     ListPopBack      (List *lst);
 void     ListPopFront     (List *lst);
 
-int32_t ListGetHead       (List *lst);
-int32_t ListGetTail       (List *lst);
-int32_t ListGetNext       (List *lst, int32_t anch);
-int32_t ListGetPrev       (List *lst, int32_t anch);
+int32_t  ListGetHead      (List *lst);
+int32_t  ListGetTail      (List *lst);
+int32_t  ListGetNext      (List *lst, int32_t anch);
+int32_t  ListGetPrev      (List *lst, int32_t anch);
+
+void     ListPrint        (List *lst);
 
 #endif  // LIST_H
  

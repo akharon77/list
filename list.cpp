@@ -32,6 +32,13 @@ void ListCtor(List *lst, int32_t size)
         };
 }
 
+void ListDtor(List *lst)
+{
+    ASSERT(lst != NULL);
+    
+    free(lst->buf);
+}
+
 int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
 {
     ASSERT(lst != NULL);
@@ -85,14 +92,14 @@ int32_t ListPushBack(List *lst, int32_t val)
 {
     ASSERT(lst != NULL);
 
-    ListInsertBefore(lst, 0, val);
+    ListInsertBefore(lst, val, 0);
 }
 
 int32_t ListPushFront(List *lst, int32_t val)
 {
     ASSERT(lst != NULL);
 
-    ListInsertAfter(lst, 0, val);
+    ListInsertAfter(lst, val, 0);
 }
 
 void ListPopBack(List *lst)
@@ -135,4 +142,22 @@ int32_t ListGetPrev(List *lst, int32_t anch)
     ASSERT(lst != NULL);
 
     return lst->buf[anch].prev;
+}
+
+void ListPrint(List *lst)
+{
+    ASSERT(lst != NULL);
+
+    int v = ListGetHead(lst);
+    while (v != 0)
+    {
+        printf("anch = %d, val = %d\n", v, lst->buf[v].val);
+        v = ListGetNext(lst, v);
+    }
+    printf("\n");
+}
+
+uint32_t ListStatus(List *lst)
+{
+    
 }
