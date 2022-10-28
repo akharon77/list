@@ -4,15 +4,28 @@
 #include "list.h"
 #include "list_debug.h"
 
-const uint32_t ERROR_SIZE_NEG      = 1 << 0,
-               ERROR_BUF_BAD_PTR   = 1 << 1,
-               ERROR_COMM_VIOL     = 1 << 2,
-               ERROR_ELEMS         = 1 << 3,
-               ERROR_FREE_INCORR   = 1 << 4,
-               ERROR_FREE_VIOL     = 1 << 5,
-               ERROR_CAP_NEG       = 1 << 6,
-               ERROR_SIZE_MISMATCH = 1 << 7,
-               ERROR_CAP_MISMATCH  = 1 << 8;
+const int32_t  DUMP_HEAD = -2;
+const int32_t  DUMP_TAIL = -3;
+const int32_t  DUMP_FREE = -1;
+
+const int32_t  ROOT      =  0;
+
+const uint32_t ERROR_SIZE_NEG      = 1 << 0;
+const uint32_t ERROR_BUF_BAD_PTR   = 1 << 1;
+const uint32_t ERROR_COMM_VIOL     = 1 << 2;
+const uint32_t ERROR_ELEMS         = 1 << 3;
+const uint32_t ERROR_FREE_INCORR   = 1 << 4;
+const uint32_t ERROR_FREE_VIOL     = 1 << 5;
+const uint32_t ERROR_CAP_NEG       = 1 << 6;
+const uint32_t ERROR_SIZE_MISMATCH = 1 << 7;
+const uint32_t ERROR_CAP_MISMATCH  = 1 << 8;
+
+const char * const COLOR_NODE_EMPTY     = "#56B13A";
+const char * const COLOR_NODE_FILLED    = "#C64153";
+const char * const COLOR_NODE_INFO_HEAD = "#D07B44";
+const char * const COLOR_NODE_INFO_TAIL = "#2B8574";
+const char * const COLOR_EDGE_FILLED    = "#2F8F66";
+const char * const COLOR_EDGE_EMPTY     = "#558006";
 
 void ListCtor(List *lst, int32_t size)
 {
@@ -28,7 +41,7 @@ void ListCtor(List *lst, int32_t size)
 
     ASSERT(lst->buf != NULL);
 
-    for (int32_t i = 1; i < size + 1; ++i)
+    for (int32_t i = 0; i < size + 1; ++i)
         lst->buf[i] = 
             {
                 .val   = -1,
@@ -36,11 +49,11 @@ void ListCtor(List *lst, int32_t size)
                 .prev  = -1
             };
 
-    lst->buf[0] = 
+    lst->buf[ROOT] = 
         {
             .val   = 0,
-            .next  = 0,
-            .prev  = 0
+            .next  = ROOT,
+            .prev  = ROOT
         };
 }
 
@@ -107,14 +120,14 @@ int32_t ListPushBack(List *lst, int32_t val)
 {
     ASSERT(lst != NULL);
 
-    ListInsertBefore(lst, val, 0);
+    ListInsertBefore(lst, val, ROOT);
 }
 
 int32_t ListPushFront(List *lst, int32_t val)
 {
     ASSERT(lst != NULL);
 
-    ListInsertAfter(lst, val, 0);
+    ListInsertAfter(lst, val, ROOT);
 }
 
 void ListPopBack(List *lst)
@@ -135,14 +148,14 @@ int32_t ListGetHead(List *lst)
 {
     ASSERT(lst != NULL);
 
-    return lst->buf[0].next;
+    return ListGetNext(lst, ROOT);
 }
 
 int32_t ListGetTail(List *lst)
 {
     ASSERT(lst != NULL);
 
-    return lst->buf[0].prev;
+    return ListGetPrev(lst, ROOT);
 }
 
 int32_t ListGetNext(List *lst, int32_t anch)
@@ -157,6 +170,13 @@ int32_t ListGetPrev(List *lst, int32_t anch)
     ASSERT(lst != NULL);
 
     return lst->buf[anch].prev;
+}
+
+int32_t ListGetValue(List *lst, int32_t anch)
+{
+    ASSERT(lst != NULL);
+
+    return lst->buf[anch].val;
 }
 
 void ListPrint(List *lst)
@@ -255,18 +275,63 @@ const char* ListErrorDesc(List *lst)
         return "Real capacity of list doesn't mathc to list capacity";
 }
 
-void ListDumpMakePrehead(List *lst)
+void ListDumpGraph(List *lst)
 {
-    dprintf(fd_dump, "digraph G{ rankdir=LR;"
+    dprintf(fd_dump, "digraph G{rankdir=LR;");
+
+    ListDumpGraphHeaders(lst);
+
+    for (int32_t anch = 1; i < lst->size + 1; ++i)
+    {
+        if (ListIsEmptyNode(lst, anch))
+        {
+            ListDumpGraphValNode(lst, anch, COLOR_NODE_EMPTY);
+            ListDumpGraphValNodeEdges(lst
+        }
+        else
+        {
+            ListDumpGraphValNode(lst, anch, COLOR_NODE_FILLED);
+        }
+    }
+
+    dprintf(fd_dump, "}");
 }
 
-void ListDumpMakeNode(List *lst, int anch)
+void ListDumpGraphHeaders(List *lst)
 {
-    dprintf(fd_dump, "node%d [shape=record, label = \"{<ind> ind: %d | val: %d | {<prev> prev: %d | <next> next: %d}}\"];", 
-            anch, anch, ListGetValue(lst, anch), ListGetPrev(lst, anch), ListGerNext(lst, anch));
+    ListDumpMakeInfoNode("head", 
 }
 
-void ListDumpMakeEdge(List *lst, int anch)
+void ListDumpGraphInfoNode(const char *name, const char *fillcolor)
 {
-    dprintf(fd_dump, 
+    dprintf(fd_dump, "node#%s [shape=invhouse, style=\"filled\", fillcolor=%s, label = \"%s\"",
+            name, fillcolor, name);
 }
+
+void ListDumpGraphNode(List *lst, int anch, const char *fillcolor, const char *color)
+{
+    ListDumpGraphNodeRecord (lst, anch, fillcolor);
+    ListDumpGraphNodeEdges  (lst, anch, color);
+}
+
+void ListDumpGraphNodeRecord(List *lst, int anch, const char *fillcolor)
+{
+    dprintf(fd_dump, "node#%d [shape=record, style=\"filled\", fillcolor=%s, label = \"{ind: %d | val: %d | {prev: %d | next: %d}}\"];", 
+            anch, fillcolor, anch, ListGetValue(lst, anch), ListGetPrev(lst, anch), ListGetNext(lst, anch));
+}
+
+void ListDumpGraphNodeEdges(List *lst, int anch, const char *color)
+{
+    int32_t next = ListGetNext(lst, anch),
+            prev = ListGetPrev(lst, anch);
+
+    if (prev != -1)
+        ListDumpGraphEdge(lst, anch, next, color);
+    ListDumpGraphEdge(lst, prev, anch, color);
+}
+
+void ListDumpGraphEdge(List *lst, int anch1, int anch2, const char *color)
+{
+    dprintf(fd_dump, "node#%d->node#%d[color=\"%s\"]", anch1, anch2);
+}
+
