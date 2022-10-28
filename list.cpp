@@ -9,7 +9,7 @@ const uint32_t ERROR_SIZE_NEG      = 1 << 0,
                ERROR_COMM_VIOL     = 1 << 2,
                ERROR_ELEMS         = 1 << 3,
                ERROR_FREE_INCORR   = 1 << 4,
-
+               ERROR_FREE_VIOL     = 1 << 5,
                ERROR_CAP_NEG       = 1 << 6,
                ERROR_SIZE_MISMATCH = 1 << 7,
                ERROR_CAP_MISMATCH  = 1 << 8;
@@ -19,7 +19,8 @@ void ListCtor(List *lst, int32_t size)
     ASSERT(lst  != NULL);
     ASSERT(size > 0);
 
-    lst->size = size;
+    lst->size = 0;
+    lst->cap  = size;
 
     lst->free = 1;
 
@@ -32,16 +33,14 @@ void ListCtor(List *lst, int32_t size)
             {
                 .val   = -1,
                 .next  = i + 1,
-                .prev  = i - 1,
-                .empty = true
+                .prev  = -1
             };
 
     lst->buf[0] = 
         {
             .val   = 0,
             .next  = 0,
-            .prev  = 0,
-            .empty = false
+            .prev  = 0
         };
 }
 
@@ -49,13 +48,16 @@ void ListDtor(List *lst)
 {
     ASSERT(lst != NULL);
     
+    lst->size = -1;
+    lst->cap  = -1;
+    lst->free = -1;
     free(lst->buf);
 }
 
 int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
 {
     ASSERT(lst != NULL);
-    ASSERT(anch < lst->size + 1 && anch > -1);
+    ASSERT(anch < lst->cap + 1 && anch > -1);
 
     int32_t npos = lst->free;
     lst->free = lst->buf[lst->free].next;
@@ -66,8 +68,7 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
         {
             .val   = val
             .next  = anch,
-            .prev  = anch_prev,
-            .empty = false
+            .prev  = anch_prev
         };
 
     lst->buf[anch_prev].next = npos;
@@ -86,8 +87,6 @@ void ListErase(List *lst, int32_t anch)
     ASSERT(lst != NULL);
     ASSERT(anch < lst->size + 1 && anch > -1);
 
-    lst->buf[lst->free].prev = anch;
-
     int32_t prev_anch = lst->buf[anch].prev,
             next_anch = lst->buf[anch].next;
 
@@ -98,8 +97,7 @@ void ListErase(List *lst, int32_t anch)
         {
             .val   = -1,
             .next  = lst->free,
-            .prev  = -1,
-            .empty = true 
+            .prev  = -1
         };
 
     lst->free = anch;
@@ -192,7 +190,7 @@ uint32_t ListStatus(List *lst)
     if (flags)
         return flags;
 
-    if (!lst->buf[lst->free].empty)
+    if (lst->buf[lst->free].prev != -1)
         flags |= ERROR_FREE_INCORR;
 
     if (sizeof(lst->buf) / sizeof(Node) != lst->cap)
@@ -201,12 +199,16 @@ uint32_t ListStatus(List *lst)
     int32_t cnt_not_empty = 0;
     for (int32_t i = 0; i < lst->size + 1; ++i)
     {
-        if (!lst->buf[i].empty)
+        if (lst->buf[i].prev != -1)
         {
             ++cnt_not_empty;
             if (ListGetPrev(lst, ListGetNext(lst, i)) != i ||
                 ListGetNext(lst, ListGetPrev(lst, i)) != i)
                 flags |= ERROR_COMM_VIOL;
+        }
+        else if (lst->buf[lst->buf[i].next].prev != -1)
+        {
+            flags |= ERROR_FREE_VIOL;
         }
     }
 
@@ -243,10 +245,28 @@ const char* ListErrorDesc(List *lst)
         return "Elements are wrong";
     if (flags & ERROR_FREE_INCORR)
         return "Bad pointer to the free section of list";
+    if (flags & ERROR_FREE_VIOL)
+        return "Broken structure of free elements of list";
     if (flags & ERROR_CAP_NEG)
         return "Capacity of list is negative";
     if (flags & ERROR_SIZE_MISMATCH)
         return "Real size of list doesn't match to list size";
     if (flags & ERROR_CAP_MISMATCH)
         return "Real capacity of list doesn't mathc to list capacity";
+}
+
+void ListDumpMakePrehead(List *lst)
+{
+    dprintf(fd_dump, "digraph G{ rankdir=LR;"
+}
+
+void ListDumpMakeNode(List *lst, int anch)
+{
+    dprintf(fd_dump, "node%d [shape=record, label = \"{<ind> ind: %d | val: %d | {<prev> prev: %d | <next> next: %d}}\"];", 
+            anch, anch, ListGetValue(lst, anch), ListGetPrev(lst, anch), ListGerNext(lst, anch));
+}
+
+void ListDumpMakeEdge(List *lst, int anch)
+{
+    dprintf(fd_dump, 
 }
