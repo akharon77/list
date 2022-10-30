@@ -3,28 +3,15 @@
 int main()
 {
     List lst = {};
-    ListCtor(&lst, 10);
+    ListCtor(&lst, 4);
 
-    for (int i = 0; i < 5; ++i)
-        ListPushBack(&lst, i);
+    ListPushBack(&lst, 1);
+    ListPushBack(&lst, 2);
+    ListPushFront(&lst, 3);
+    ListPushFront(&lst, 4);
 
-    ListPrint(&lst);
-
-    ListInsertBefore(&lst, 56, 3);
-    ListInsertAfter(&lst, 23, 1);
-
-    ListPrint(&lst);
-
-    ListErase(&lst, 2);
-    ListErase(&lst, 4);
-
-    ListPrint(&lst);
+    ListRealloc(&lst, 8, false);
     ListDumpGraph(&lst);
-
-    ListPushFront(&lst, 93);
-    ListPushFront(&lst, 32);
-
-    ListPrint(&lst);
 
     return 0;
 }

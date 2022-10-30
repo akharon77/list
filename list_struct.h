@@ -17,6 +17,8 @@ struct List
     Node    *buf;
 
     int32_t  free;
+
+    bool     is_linearized; 
 };
 
 #endif  // LIST_STRUCT_H

@@ -31,6 +31,8 @@ const char * const COLOR_NODE_ROOT      = "#A4B5B0";
 const char * const COLOR_NODE_INFO_HEAD = "#D07B44";
 const char * const COLOR_NODE_INFO_TAIL = "#2B8574";
 const char * const COLOR_EDGE_FILLED    = "#2F8F66";
+const char * const COLOR_EDGE_NEXT      = "#2F8F66";
+const char * const COLOR_EDGE_PREV      = "#48afd0";
 const char * const COLOR_EDGE_EMPTY     = "#558006";
 
 void ListCtor(List *lst, int32_t size)
@@ -55,6 +57,8 @@ void ListCtor(List *lst, int32_t size)
                 .prev  = -1
             };
 
+    lst->buf[size].next = -1;
+
     lst->buf[ROOT] = 
         {
             .val   = 0,
@@ -78,9 +82,11 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     ASSERT(lst != NULL);
     ASSERT(anch < lst->cap + 1 && anch > -1);
 
-    // TODO: realloc
-    // if (lst->size + 1 > lst->cap)
-    //     ListRealloc(lst, ListGetNewCapacity(lst));
+    if (anch != ROOT)
+        lst->is_linearized = false;
+
+    if (ListGetSize(lst) + 1 > ListGetCapacity(lst))
+        ListRealloc(lst, ListGetNewCapacity(lst, ListGetSize(lst) + 1), false);
 
     int32_t npos = lst->free;
     lst->free = lst->buf[lst->free].next;
@@ -102,6 +108,68 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     return npos;
 }
 
+void ListRealloc(List *lst, int32_t new_cap, bool linear)
+{
+    Node *new_buf = NULL;
+    if (!linear)
+    {
+        new_buf = (Node*) realloc(lst->buf, (new_cap + 1) * sizeof(Node));
+    }
+    else
+    {
+        new_buf = (Node*) calloc(new_cap + 1, sizeof(Node));
+        ASSERT(new_buf != NULL);
+
+        new_buf[ROOT] = 
+            {
+                .val   = 0,
+                .next  = 1,
+                .prev  = ListGetSize(lst)
+            };
+
+        int32_t vertex = ListGetHead(lst), i = 1;
+        while (vertex != ROOT)
+        {
+            new_buf[i] = 
+                {
+                    .val  = ListGetValue(lst, vertex),
+                    .next = i + 1,
+                    .prev = i - 1
+                };
+
+            vertex = ListGetNext(lst, vertex);
+            ++i;
+        }
+
+        new_buf[ListGetSize(lst)].next = ROOT;
+    }
+
+    ASSERT(new_buf != NULL);
+    
+    new_buf[ListGetFree(lst)].next = ListGetCapacity(lst) + 1;
+    for (int32_t anch = ListGetCapacity(lst) + 1; anch < new_cap + 1; ++anch)
+        new_buf[anch] = 
+            {
+                .val  = -1,
+                .next = anch + 1,
+                .prev = -1
+            };
+
+    new_buf[new_cap].next = -1;
+
+    lst->buf  = new_buf;
+    lst->free = lst->cap + 1;
+    lst->cap  = new_cap;
+}
+
+int32_t ListGetNewCapacity(List *lst, int32_t new_size)
+{
+    if (ListGetSize(lst) <= new_size)
+        return max(new_size, ListGetSize(lst) * 2);
+    else
+        return min(new_size, max(1, ListGetSize(lst) / 4));
+}
+
 int32_t ListInsertAfter(List *lst, int32_t val, int32_t anch)
 {
     return ListInsertBefore(lst, val, lst->buf[anch].next);
@@ -111,6 +179,9 @@ void ListErase(List *lst, int32_t anch)
 {
     ASSERT(lst != NULL);
     ASSERT(anch < lst->size + 1 && anch > -1);
+
+    if (anch != ListGetTail(lst))
+        lst->is_linearized = false;
 
     int32_t prev_anch = lst->buf[anch].prev,
             next_anch = lst->buf[anch].next;
@@ -251,7 +322,7 @@ uint32_t ListStatus(List *lst)
         flags |= ERROR_CAP_MISMATCH;
 
     int32_t cnt_not_empty = 0;
-    for (int32_t i = 0; i < lst->size + 1; ++i)
+    for (int32_t i = 0; i < ListGetSize(lst) + 1; ++i)
     {
         if (lst->buf[i].prev != -1)
         {
@@ -318,11 +389,11 @@ void ListDumpGraph(List *lst)
     for (int32_t anch = ListGetCapacity(lst); anch > 0; --anch)
     {
         if (ListIsEmptyNode(lst, anch))
-            ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY,  COLOR_EDGE_EMPTY);
+            ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY);
         else
-            ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, COLOR_EDGE_FILLED);
+            ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED);
     }
-    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, COLOR_EDGE_FILLED);
+    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT);
 
     dprintf(fd_dump, "}\n");
 }
@@ -345,10 +416,10 @@ void ListDumpGraphInfoNode(int anch, const char *name, const char *fillcolor)
             anch, fillcolor, name);
 }
 
-void ListDumpGraphNode(List *lst, int anch, const char *fillcolor, const char *color)
+void ListDumpGraphNode(List *lst, int anch, const char *fillcolor)
 {
     ListDumpGraphNodeRecord (lst, anch, fillcolor);
-    ListDumpGraphNodeEdges  (lst, anch, color);
+    ListDumpGraphNodeEdges  (lst, anch);
 }
 
 void ListDumpGraphNodeRecord(List *lst, int anch, const char *fillcolor)
@@ -357,20 +428,34 @@ void ListDumpGraphNodeRecord(List *lst, int anch, const char *fillcolor)
             anch, fillcolor, anch, ListGetValue(lst, anch), ListGetPrev(lst, anch), ListGetNext(lst, anch));
 }
 
-void ListDumpGraphNodeEdges(List *lst, int anch, const char *color)
+void ListDumpGraphNodeEdges(List *lst, int anch)
 {
     int32_t next = ListGetNext(lst, anch),
             prev = ListGetPrev(lst, anch);
 
-    if (prev != -1)
-        ListDumpGraphEdge(anch, prev, color);
-    if (next != ListGetCapacity(lst) + 1)
-        ListDumpGraphEdge(anch, next, color);
+    ListDumpGraphEdge(anch, prev, COLOR_EDGE_PREV);
+    ListDumpGraphEdge(anch, next, COLOR_EDGE_NEXT);
 }
 
 void ListDumpGraphEdge(int anch1, int anch2, const char *color)
 {
-    dprintf(fd_dump, "node%d->node%d[color=\"%s\"];\n",
-            anch1, anch2, color);
+    if (anch1 != -1 && anch2 != -1)
+        dprintf(fd_dump, "node%d->node%d[color=\"%s\"];\n",
+                anch1, anch2, color);
 }
 
+int32_t min(int32_t a, int32_t b)
+{
+    if (a < b)
+        return a;
+    else
+        return b;
+}
+
+int32_t max(int32_t a, int32_t b)
+{
+    if (a > b)
+        return a;
+    else
+        return b;
+}
