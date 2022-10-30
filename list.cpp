@@ -1,14 +1,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "list.h"
 #include "list_debug.h"
 
-const int32_t  DUMP_HEAD = -2;
-const int32_t  DUMP_TAIL = -3;
-const int32_t  DUMP_FREE = -1;
+const int32_t  DUMP_NODE_HEAD = 2147483645;
+const int32_t  DUMP_NODE_TAIL = 2147483646;
+const int32_t  DUMP_NODE_FREE = 2147483647;
 
 const int32_t  ROOT      =  0;
+
+const int32_t  fd_dump = 1;  // TODO: fix
 
 const uint32_t ERROR_SIZE_NEG      = 1 << 0;
 const uint32_t ERROR_BUF_BAD_PTR   = 1 << 1;
@@ -20,6 +24,7 @@ const uint32_t ERROR_CAP_NEG       = 1 << 6;
 const uint32_t ERROR_SIZE_MISMATCH = 1 << 7;
 const uint32_t ERROR_CAP_MISMATCH  = 1 << 8;
 
+// TODO: border colors, background colors
 const char * const COLOR_NODE_EMPTY     = "#56B13A";
 const char * const COLOR_NODE_FILLED    = "#C64153";
 const char * const COLOR_NODE_INFO_HEAD = "#D07B44";
@@ -72,20 +77,26 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     ASSERT(lst != NULL);
     ASSERT(anch < lst->cap + 1 && anch > -1);
 
+    // TODO: realloc
+    // if (lst->size + 1 > lst->cap)
+    //     ListRealloc(lst, ListGetNewCapacity(lst));
+
     int32_t npos = lst->free;
     lst->free = lst->buf[lst->free].next;
 
     int32_t anch_prev = lst->buf[anch].prev;
 
-    lst->buf[npos].val  = 
+    lst->buf[npos] = 
         {
-            .val   = val
+            .val   = val,
             .next  = anch,
             .prev  = anch_prev
         };
 
     lst->buf[anch_prev].next = npos;
     lst->buf[anch].prev      = npos;
+    
+    ++lst->size;
 
     return npos;
 }
@@ -114,6 +125,8 @@ void ListErase(List *lst, int32_t anch)
         };
 
     lst->free = anch;
+
+    --lst->size;
 }
 
 int32_t ListPushBack(List *lst, int32_t val)
@@ -179,6 +192,26 @@ int32_t ListGetValue(List *lst, int32_t anch)
     return lst->buf[anch].val;
 }
 
+int32_t ListGetFree(List *lst)
+{
+    return lst->free;
+}
+
+int32_t ListGetSize(List *lst)
+{
+    return lst->size;
+}
+
+int32_t ListGetCapacity(List *lst)
+{
+    return lst->cap;
+}
+
+bool ListIsEmptyNode(List *lst, int anch)
+{
+    return lst->buf[anch].prev == -1;
+}
+
 void ListPrint(List *lst)
 {
     ASSERT(lst != NULL);
@@ -199,7 +232,7 @@ uint32_t ListStatus(List *lst)
 
     uint32_t flags = 0;
 
-    if (lst->size < 0)
+    if (ListGetSize(lst) < 0)
         flags |= ERROR_SIZE_NEG;
     if (lst->cap  < 0)
         flags |= ERROR_CAP_NEG;
@@ -210,7 +243,7 @@ uint32_t ListStatus(List *lst)
     if (flags)
         return flags;
 
-    if (lst->buf[lst->free].prev != -1)
+    if (lst->buf[ListGetFree(lst)].prev != -1)
         flags |= ERROR_FREE_INCORR;
 
     if (sizeof(lst->buf) / sizeof(Node) != lst->cap)
@@ -232,7 +265,7 @@ uint32_t ListStatus(List *lst)
         }
     }
 
-    if (cnt_not_empty != lst->size)
+    if (cnt_not_empty != ListGetSize(lst))
         flags |= ERROR_SIZE_MISMATCH;
 
     if (flags)
@@ -281,31 +314,33 @@ void ListDumpGraph(List *lst)
 
     ListDumpGraphHeaders(lst);
 
-    for (int32_t anch = 1; i < lst->size + 1; ++i)
+    for (int32_t anch = ListGetCapacity(lst); anch > -1; --anch)
     {
         if (ListIsEmptyNode(lst, anch))
-        {
-            ListDumpGraphValNode(lst, anch, COLOR_NODE_EMPTY);
-            ListDumpGraphValNodeEdges(lst
-        }
+            ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY,  COLOR_EDGE_EMPTY);
         else
-        {
-            ListDumpGraphValNode(lst, anch, COLOR_NODE_FILLED);
-        }
+            ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, COLOR_EDGE_FILLED);
     }
 
-    dprintf(fd_dump, "}");
+    dprintf(fd_dump, "}\n");
 }
 
 void ListDumpGraphHeaders(List *lst)
 {
-    ListDumpMakeInfoNode("head", 
+    ListDumpGraphInfoNode (DUMP_NODE_HEAD, "head", COLOR_NODE_INFO_HEAD);
+    ListDumpGraphEdge     (DUMP_NODE_HEAD, ListGetHead(lst), COLOR_EDGE_FILLED);
+
+    ListDumpGraphInfoNode (DUMP_NODE_TAIL, "tail", COLOR_NODE_INFO_TAIL);
+    ListDumpGraphEdge     (DUMP_NODE_TAIL, ListGetTail(lst), COLOR_EDGE_FILLED);
+
+    ListDumpGraphInfoNode (DUMP_NODE_FREE, "free", COLOR_EDGE_EMPTY);
+    ListDumpGraphEdge     (DUMP_NODE_FREE, ListGetFree(lst), COLOR_EDGE_EMPTY);
 }
 
-void ListDumpGraphInfoNode(const char *name, const char *fillcolor)
+void ListDumpGraphInfoNode(int anch, const char *name, const char *fillcolor)
 {
-    dprintf(fd_dump, "node#%s [shape=invhouse, style=\"filled\", fillcolor=%s, label = \"%s\"",
-            name, fillcolor, name);
+    dprintf(fd_dump, "node%d[shape=invhouse, style=\"filled\", fillcolor=\"%s\", label = \"%s\"];\n",
+            anch, fillcolor, name);
 }
 
 void ListDumpGraphNode(List *lst, int anch, const char *fillcolor, const char *color)
@@ -316,7 +351,7 @@ void ListDumpGraphNode(List *lst, int anch, const char *fillcolor, const char *c
 
 void ListDumpGraphNodeRecord(List *lst, int anch, const char *fillcolor)
 {
-    dprintf(fd_dump, "node#%d [shape=record, style=\"filled\", fillcolor=%s, label = \"{ind: %d | val: %d | {prev: %d | next: %d}}\"];", 
+    dprintf(fd_dump, "node%d[shape=record, style=\"filled\", fillcolor=\"%s\", label = \"ind: %d | val: %d | {prev: %d | next: %d}\"];\n", 
             anch, fillcolor, anch, ListGetValue(lst, anch), ListGetPrev(lst, anch), ListGetNext(lst, anch));
 }
 
@@ -326,12 +361,14 @@ void ListDumpGraphNodeEdges(List *lst, int anch, const char *color)
             prev = ListGetPrev(lst, anch);
 
     if (prev != -1)
-        ListDumpGraphEdge(lst, anch, next, color);
-    ListDumpGraphEdge(lst, prev, anch, color);
+        ListDumpGraphEdge(anch, prev, color);
+    if (next != ListGetCapacity(lst) + 1)
+        ListDumpGraphEdge(anch, next, color);
 }
 
-void ListDumpGraphEdge(List *lst, int anch1, int anch2, const char *color)
+void ListDumpGraphEdge(int anch1, int anch2, const char *color)
 {
-    dprintf(fd_dump, "node#%d->node#%d[color=\"%s\"]", anch1, anch2);
+    dprintf(fd_dump, "node%d->node%d[color=\"%s\"];\n",
+            anch1, anch2, color);
 }
 

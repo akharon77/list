@@ -19,6 +19,7 @@ int main()
     ListErase(&lst, 4);
 
     ListPrint(&lst);
+    ListDumpGraph(&lst);
 
     ListPushFront(&lst, 93);
     ListPushFront(&lst, 32);

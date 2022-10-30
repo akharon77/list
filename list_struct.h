@@ -7,13 +7,13 @@ struct Node
 
     int32_t next;
     int32_t prev;
-
-    bool    empty;
 };
 
 struct List
 {
     int32_t  size;
+    int32_t  cap;
+
     Node    *buf;
 
     int32_t  free;
