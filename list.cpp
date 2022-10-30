@@ -27,6 +27,7 @@ const uint32_t ERROR_CAP_MISMATCH  = 1 << 8;
 // TODO: border colors, background colors
 const char * const COLOR_NODE_EMPTY     = "#56B13A";
 const char * const COLOR_NODE_FILLED    = "#C64153";
+const char * const COLOR_NODE_ROOT      = "#A4B5B0";
 const char * const COLOR_NODE_INFO_HEAD = "#D07B44";
 const char * const COLOR_NODE_INFO_TAIL = "#2B8574";
 const char * const COLOR_EDGE_FILLED    = "#2F8F66";
@@ -314,13 +315,14 @@ void ListDumpGraph(List *lst)
 
     ListDumpGraphHeaders(lst);
 
-    for (int32_t anch = ListGetCapacity(lst); anch > -1; --anch)
+    for (int32_t anch = ListGetCapacity(lst); anch > 0; --anch)
     {
         if (ListIsEmptyNode(lst, anch))
             ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY,  COLOR_EDGE_EMPTY);
         else
             ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, COLOR_EDGE_FILLED);
     }
+    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, COLOR_EDGE_FILLED);
 
     dprintf(fd_dump, "}\n");
 }
