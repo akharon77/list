@@ -1,4 +1,7 @@
+#include <unistd.h>
+#include <fcntl.h>
 #include "list_debug.h"
+#include "list.h"
 
 const char * const COLOR_NODE_EMPTY     = "#56B13A";
 const char * const COLOR_NODE_FILLED    = "#C64153";
@@ -32,23 +35,24 @@ uint32_t ListStatus(List *lst)
 
     if (ListGetSize(lst) < 0)
         flags |= ERROR_SIZE_NEG;
+
     if (lst->cap  < 0)
         flags |= ERROR_CAP_NEG;
 
     if (isBadPtr(lst->buf))
         flags |= ERROR_BUF_BAD_PTR;
 
-    if (flags)
-        return flags;
-
-    if (lst->buf[ListGetFree(lst)].prev != -1)
+    if (ListGetFree(lst) > ListGetCapacity(lst) || lst->buf[ListGetFree(lst)].prev != -1)
         flags |= ERROR_FREE_INCORR;
 
     if (sizeof(lst->buf) / sizeof(Node) != lst->cap)
         flags |= ERROR_CAP_MISMATCH;
 
+    if (flags)
+        return flags;
+
     int32_t cnt_not_empty = 0;
-    for (int32_t i = 0; i < ListGetSize(lst) + 1; ++i)
+    for (int32_t i = 0; i < sizeof(lst->buf) / sizeof(Node) && !ListIsEmptyNode(lst, i); ++i)
     {
         if (lst->buf[i].prev != -1)
         {
@@ -66,8 +70,7 @@ uint32_t ListStatus(List *lst)
     if (cnt_not_empty != ListGetSize(lst))
         flags |= ERROR_SIZE_MISMATCH;
 
-    if (flags)
-        return flags;
+    return flags;
 }
 
 bool isBadPtr(void *ptr)
@@ -82,10 +85,8 @@ bool isBadPtr(void *ptr)
     return res;
 }
 
-const char* ListErrorDesc(List *lst)
+const char* ListErrorDesc(uint32_t flags)
 {
-    uint32_t flags = ListStatus(lst);
-
     if (flags & ERROR_POISIONED_STRUCT)
         return "List is poisoned and invalid";
     if (flags & ERROR_SIZE_NEG)
@@ -108,9 +109,38 @@ const char* ListErrorDesc(List *lst)
         return "Real capacity of list doesn't mathc to list capacity";
 }
 
+void ListDump(List *lst, int32_t fd_dump)
+{
+    ASSERT(!isBadPtr(lst));
+
+    uint32_t flags = ListStatus(lst);
+
+    dprintf(fd_dump, "List[%p]\n"
+                     "Status: %x, %s\n"
+                     "%s at %s in %s(%ld): \n"
+                     "{\n\tsize = %ld, \n"
+                     "\tcapacity = %ld, \n",
+                     lst,
+                     flags, ListErrorDesc(flags),
+                     lst->info.name, lst->info.funcname, lst->info.filename, lst->info.line,
+                     lst->size,
+                     lst->cap);
+
+    for (int64_t i = 0; i < lst->cap + 1; ++i)
+        dprintf(fd_dump, "\t[%ld] = \n"
+                         "\t{\n"
+                         "\t\tval: \t%d,\n"
+                         "\t\tnext:\t%d,\n"
+                         "\t\tprev:\t%d\n"
+                         "\t}\n",
+                         i, lst->buf[i].val, lst->buf[i].next, lst->buf[i].prev);
+
+    dprintf(fd_dump, "}\n");
+}
+
 void ListDumpGraph(List *lst, int32_t fd_dump)
 {
-    dprintf(fd_dump, "digraph G{rankdir=LR;");
+    dprintf(fd_dump, "digraph G{rankdir=LR;splines=ortho;nodesep=1;");
 
     ListDumpGraphHeaders(lst, fd_dump);
 

@@ -1,7 +1,15 @@
 #ifndef LIST_STRUCT_H
 #define LIST_STRUCT_H
 
-#include "list_debug.h"
+#include <stdint.h>
+
+struct DebugInfo
+{
+    int32_t     line;
+    const char *name;
+    const char *funcname;
+    const char *filename;
+};
 
 struct Node
 {
@@ -22,10 +30,7 @@ struct List
 
     bool      is_linearized; 
 
-ON_DEBUG
-(
     DebugInfo info;
-)
 };
 
 #endif  // LIST_STRUCT_H

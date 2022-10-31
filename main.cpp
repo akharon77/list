@@ -11,7 +11,7 @@ int main()
     ListPushFront(&lst, 4);
 
     ListRealloc(&lst, 8, false);
-    ListDumpGraph(&lst);
+    ListDumpGraph(&lst, 1);
 
     return 0;
 }

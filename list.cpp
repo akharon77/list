@@ -97,7 +97,7 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     return npos;
 }
 
-Node *ListLinearize(List *lst)
+Node *ListLinearize(List *lst, int32_t new_cap)
 {
     ASSERT(lst != NULL);
 
@@ -136,7 +136,7 @@ void ListRealloc(List *lst, int32_t new_cap, bool linear)
     if (!linear)
         new_buf = (Node*) realloc(lst->buf, (new_cap + 1) * sizeof(Node));
     else
-        new_buf = ListLinearize(lst);
+        new_buf = ListLinearize(lst, new_cap);
 
     ASSERT(new_buf != NULL);
     
@@ -280,7 +280,7 @@ bool ListIsEmptyNode(List *lst, int anch)
     return lst->buf[anch].prev == -1;
 }
 
-static void ListFillStructurePosion(List *lst)
+void ListFillStructurePosion(List *lst)
 {
     for (int32_t i = 0; i < sizeof(List) / sizeof(int64_t); ++i)
         *((int64_t*)(lst) + i) = POISON;
