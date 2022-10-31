@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include "list_debug.h"
 #include "list.h"
 
@@ -12,6 +13,15 @@ const char * const COLOR_EDGE_FILLED    = "#2F8F66";
 const char * const COLOR_EDGE_NEXT      = "#2F8F66";
 const char * const COLOR_EDGE_PREV      = "#48afd0";
 const char * const COLOR_EDGE_EMPTY     = "#558006";
+
+int32_t ListInitLog()
+{
+    int32_t fd_dump = creat("list_log.html", S_IRWXU);
+    
+    dprintf(fd_dump, "<pre>");
+
+    return fd_dump;
+}
 
 void ListPrint(List *lst)
 {
@@ -138,20 +148,37 @@ void ListDump(List *lst, int32_t fd_dump)
 
 void ListDumpGraph(List *lst, int32_t fd_dump)
 {
-    dprintf(fd_dump, "digraph G{rankdir=LR;");
+    const char *fd_dump_graph_filename = ".list_dump_graph.txt";
+    static int32_t cnt = 0;
 
-    ListDumpGraphHeaders(lst, fd_dump);
+    int32_t fd_dump_graph = creat(fd_dump_graph_filename, S_IRWXU);
 
-    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, fd_dump);
+    dprintf(fd_dump_graph, "digraph G{rankdir=LR;");
+
+    ListDumpGraphHeaders(lst, fd_dump_graph);
+
+    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, fd_dump_graph);
     for (int32_t anch = ListGetCapacity(lst); anch > 0; --anch)
     {
         if (ListIsEmptyNode(lst, anch))
-            ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY, fd_dump);
+            ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY, fd_dump_graph);
         else
-            ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, fd_dump);
+            ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, fd_dump_graph);
     }
 
-    dprintf(fd_dump, "}\n");
+    dprintf(fd_dump_graph, "}\n");
+
+    close(fd_dump_graph);
+
+    char cmd[256] = "";
+    sprintf(cmd, "dot ./%s -o list_graph%d.svg -Tsvg", 
+                 fd_dump_graph_filename, cnt);
+    system(cmd);
+
+    dprintf(fd_dump, "<img src=\"list_graph%d.svg\" width = 500>\n",
+                     cnt);
+
+    ++cnt;
 }
 
 void ListDumpGraphHeaders(List *lst, int32_t fd_dump)

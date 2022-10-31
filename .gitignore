@@ -7,3 +7,7 @@
 vgcore*
 *.asm
 *.bin
+*.png
+*.svg
+*.txt
+*.html

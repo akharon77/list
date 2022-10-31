@@ -57,6 +57,7 @@ const int32_t  DUMP_NODE_FREE = 2147483647;
 
 const int64_t  POISON         = 0xDEADBEEF1451DE1ll;
 
+int32_t     ListInitLog             ();
 void        ListPrint               (List *lst);
 
 uint32_t    ListStatus              (List *lst);
