@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include "list.h"
 #include "list_debug.h"
 
@@ -51,7 +52,7 @@ void        ListCtor_          (List *lst, int32_t size
         lst->info =
             {
                 .line     = line,
-                .name     = name,
+                .name     = name + 1,
                 .funcname = funcname,
                 .filename = filename
             };
@@ -74,8 +75,9 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     if (anch != ROOT)
         lst->is_linearized = false;
 
-    if (ListGetSize(lst) + 1 > ListGetCapacity(lst))
-        ListRealloc(lst, ListGetNewCapacity(lst, ListGetSize(lst) + 1), false);
+    int32_t new_cap = ListGetNewCapacity(lst, ListGetSize(lst) + 1);
+    if (new_cap != ListGetCapacity(lst))
+        ListRealloc(lst, new_cap, false);
 
     int32_t npos = lst->free;
     lst->free = lst->buf[lst->free].next;
@@ -132,14 +134,23 @@ Node *ListLinearize(List *lst, int32_t new_cap)
 
 void ListRealloc(List *lst, int32_t new_cap, bool linear)
 {
+    ASSERT(lst != NULL);
+
     Node *new_buf = NULL;
-    if (!linear)
-        new_buf = (Node*) realloc(lst->buf, (new_cap + 1) * sizeof(Node));
-    else
+    if (linear || new_cap < ListGetCapacity(lst))
+    {
         new_buf = ListLinearize(lst, new_cap);
+    }
+    else
+    {
+        new_buf = (Node*) calloc(new_cap + 1, sizeof(Node));
+        memcpy(new_buf, lst->buf, (ListGetCapacity(lst) + 1) * sizeof(Node));
+        free(lst->buf);
+    }
 
     ASSERT(new_buf != NULL);
     
+    lst->free = lst->cap + 1;
     new_buf[ListGetFree(lst)].next = ListGetCapacity(lst) + 1;
     for (int32_t anch = ListGetCapacity(lst) + 1; anch < new_cap + 1; ++anch)
         new_buf[anch] = 
@@ -152,7 +163,6 @@ void ListRealloc(List *lst, int32_t new_cap, bool linear)
     new_buf[new_cap].next = -1;
 
     lst->buf  = new_buf;
-    lst->free = lst->cap + 1;
     lst->cap  = new_cap;
 }
 
@@ -175,6 +185,10 @@ void ListErase(List *lst, int32_t anch)
 {
     ASSERT(lst != NULL);
     ASSERT(anch < lst->size + 1 && anch > -1);
+
+    int32_t new_cap = ListGetNewCapacity(lst, ListGetSize(lst));
+    if (new_cap != ListGetCapacity(lst))
+        ListRealloc(lst, new_cap, true);
 
     if (anch != ListGetTail(lst))
         lst->is_linearized = false;

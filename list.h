@@ -6,11 +6,11 @@
 #include "list_debug.h"
 
 #ifdef DEBUG
-    #define ListCtor(lst, size, line, name, funcname, filename) \
-            ListCtor_(lst, size,                                \
-                      __LINE__,                                 \
-                      #lst,                                     \
-                      __PRETTY_FUNCTION__,                      \
+    #define ListCtor(lst, size)             \
+            ListCtor_(lst, size,            \
+                      __LINE__,             \
+                      #lst,                 \
+                      __PRETTY_FUNCTION__,  \
                       __FILE__)
 #else
     #define ListCtor(lst, size) \

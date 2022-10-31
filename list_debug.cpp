@@ -45,14 +45,11 @@ uint32_t ListStatus(List *lst)
     if (ListGetFree(lst) > ListGetCapacity(lst) || lst->buf[ListGetFree(lst)].prev != -1)
         flags |= ERROR_FREE_INCORR;
 
-    if (sizeof(lst->buf) / sizeof(Node) != lst->cap)
-        flags |= ERROR_CAP_MISMATCH;
-
     if (flags)
         return flags;
 
     int32_t cnt_not_empty = 0;
-    for (int32_t i = 0; i < sizeof(lst->buf) / sizeof(Node) && !ListIsEmptyNode(lst, i); ++i)
+    for (int32_t i = 0; i < ListGetCapacity(lst); ++i)
     {
         if (lst->buf[i].prev != -1)
         {
@@ -67,7 +64,7 @@ uint32_t ListStatus(List *lst)
         }
     }
 
-    if (cnt_not_empty != ListGetSize(lst))
+    if (cnt_not_empty - 1 != ListGetSize(lst))
         flags |= ERROR_SIZE_MISMATCH;
 
     return flags;
@@ -106,7 +103,8 @@ const char* ListErrorDesc(uint32_t flags)
     if (flags & ERROR_SIZE_MISMATCH)
         return "Real size of list doesn't match to list size";
     if (flags & ERROR_CAP_MISMATCH)
-        return "Real capacity of list doesn't mathc to list capacity";
+        return "Real capacity of list doesn't match to list capacity";
+    return "OK";
 }
 
 void ListDump(List *lst, int32_t fd_dump)
@@ -144,6 +142,7 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
 
     ListDumpGraphHeaders(lst, fd_dump);
 
+    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, fd_dump);
     for (int32_t anch = ListGetCapacity(lst); anch > 0; --anch)
     {
         if (ListIsEmptyNode(lst, anch))
@@ -151,7 +150,6 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
         else
             ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, fd_dump);
     }
-    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, fd_dump);
 
     dprintf(fd_dump, "}\n");
 }
