@@ -50,7 +50,7 @@ int32_t     ListGetNext             (List *lst, int32_t anch);
 int32_t     ListGetPrev             (List *lst, int32_t anch);
 
 void        ListRealloc             (List *lst, int32_t new_cap, bool linear);
-int32_t     ListGetNewCapacity      (List *lst, int32_t new_size);
+void        ListLinearize           (List *lst);
 
 bool        ListIsEmptyNode         (List *lst, int anch);
 

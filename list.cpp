@@ -75,9 +75,8 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     if (anch != ROOT)
         lst->is_linearized = false;
 
-    int32_t new_cap = ListGetNewCapacity(lst, ListGetSize(lst) + 1);
-    if (new_cap != ListGetCapacity(lst))
-        ListRealloc(lst, new_cap, false);
+    if (lst->size + 1 > lst->cap)
+        ListRealloc(lst, lst->cap * 2, false);
 
     int32_t npos = lst->free;
     lst->free = lst->buf[lst->free].next;
@@ -99,18 +98,18 @@ int32_t ListInsertBefore(List *lst, int32_t val, int32_t anch)
     return npos;
 }
 
-Node *ListLinearize(List *lst, int32_t new_cap)
+void ListLinearize(List *lst)
 {
     ASSERT(lst != NULL);
 
-    Node *new_buf = (Node*) calloc(new_cap + 1, sizeof(Node));
+    Node *new_buf = (Node*) calloc(lst->cap + 1, sizeof(Node));
     ASSERT(new_buf != NULL);
 
     new_buf[ROOT] = 
         {
             .val   = 0,
             .next  = 1,
-            .prev  = ListGetSize(lst)
+            .prev  = lst->size
         };
 
     int32_t vertex = ListGetHead(lst), i = 1;
@@ -127,53 +126,52 @@ Node *ListLinearize(List *lst, int32_t new_cap)
         ++i;
     }
 
-    new_buf[ListGetSize(lst)].next = ROOT;
+    free(lst->buf);
 
-    return new_buf;
+    for (int32_t anch = lst->size + 1; anch < lst->cap + 1; ++anch)
+        new_buf[anch] = 
+            {
+                .val  = -1,
+                .next = anch + 1 <= lst->cap ? anch + 1 : -1,
+                .prev = -1
+            };
+
+    new_buf[lst->size].next = ROOT;
+
+    lst->buf = new_buf;
+    if (lst->size == lst->cap)
+        lst->free = -1;
+    else
+        lst->free = lst->size + 1;
 }
 
 void ListRealloc(List *lst, int32_t new_cap, bool linear)
 {
     ASSERT(lst != NULL);
 
-    Node *new_buf = NULL;
-    if (linear || new_cap < ListGetCapacity(lst))
-    {
-        new_buf = ListLinearize(lst, new_cap);
-    }
-    else
-    {
-        new_buf = (Node*) calloc(new_cap + 1, sizeof(Node));
-        memcpy(new_buf, lst->buf, (ListGetCapacity(lst) + 1) * sizeof(Node));
-        free(lst->buf);
-    }
+    if (linear || new_cap < lst->cap)
+        ListLinearize(lst);
+
+    Node *new_buf = (Node*) realloc(lst->buf, (new_cap + 1) * sizeof(Node));
 
     ASSERT(new_buf != NULL);
     
-    lst->free = lst->cap + 1;
-    new_buf[ListGetFree(lst)].next = ListGetCapacity(lst) + 1;
-    for (int32_t anch = ListGetCapacity(lst) + 1; anch < new_cap + 1; ++anch)
+    for (int32_t anch = lst->cap + 1; anch < new_cap + 1; ++anch)
         new_buf[anch] = 
             {
                 .val  = -1,
-                .next = anch + 1,
+                .next = anch + 1 <= new_cap ? anch + 1 : -1,
                 .prev = -1
             };
 
-    new_buf[new_cap].next = -1;
-
     lst->buf  = new_buf;
-    lst->cap  = new_cap;
-}
 
-int32_t ListGetNewCapacity(List *lst, int32_t new_size)
-{
-    if (ListGetSize(lst) <= new_size)
-        return max(new_size, ListGetSize(lst) * 2);
-    else if (new_size <= ListGetSize(lst) / 4)
-        return ListGetSize(lst) / 4;
+    if (lst->size == new_cap)
+        lst->free = -1;
     else
-        return ListGetSize(lst);
+        lst->free = lst->cap + 1;
+
+    lst->cap  = new_cap;
 }
 
 int32_t ListInsertAfter(List *lst, int32_t val, int32_t anch)
@@ -186,9 +184,8 @@ void ListErase(List *lst, int32_t anch)
     ASSERT(lst != NULL);
     ASSERT(anch < lst->size + 1 && anch > -1);
 
-    int32_t new_cap = ListGetNewCapacity(lst, ListGetSize(lst));
-    if (new_cap != ListGetCapacity(lst))
-        ListRealloc(lst, new_cap, true);
+    if (lst->size < lst->cap / 4)
+        ListRealloc(lst, lst->size, true);
 
     if (anch != ListGetTail(lst))
         lst->is_linearized = false;

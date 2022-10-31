@@ -138,7 +138,7 @@ void ListDump(List *lst, int32_t fd_dump)
 
 void ListDumpGraph(List *lst, int32_t fd_dump)
 {
-    dprintf(fd_dump, "digraph G{rankdir=LR;splines=ortho;nodesep=1;");
+    dprintf(fd_dump, "digraph G{rankdir=LR;");
 
     ListDumpGraphHeaders(lst, fd_dump);
 
