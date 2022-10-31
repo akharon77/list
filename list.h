@@ -3,8 +3,30 @@
 
 #include <stdint.h>
 #include "list_struct.h"
+#include "list_debug.h"
 
-void        ListCtor           (List *lst, int32_t size);
+#ifdef DEBUG
+    #define ListCtor(lst, size, line, name, funcname, filename) \
+            ListCtor_(lst, size,                                \
+                      __LINE__,                                 \
+                      #lst,                                     \
+                      __PRETTY_FUNCTION__,                      \
+                      __FILE__)
+#else
+    #define ListCtor(lst, size) \
+            ListCtor_(lst, size)
+#endif
+
+void        ListCtor_          (List *lst, int32_t size 
+                                ON_DEBUG
+                                (
+                                ,int32_t     line,
+                                 const char *name,
+                                 const char *funcname,
+                                 const char *filename
+                                ));
+
+void        ListDtor           (List *lst);
 
 int32_t     ListInsertBefore   (List *lst, int32_t val, int32_t anch);
 int32_t     ListInsertAfter    (List *lst, int32_t val, int32_t anch);
@@ -31,28 +53,6 @@ void        ListRealloc        (List *lst, int32_t new_cap, bool linear);
 int32_t     ListGetNewCapacity (List *lst, int32_t new_size);
 
 bool        ListIsEmptyNode    (List *lst, int anch);
-
-void        ListPrint          (List *lst);
-
-uint32_t    ListStatus         (List *lst);
-const char* ListErrorDesc      (List *lst);
-
-
-void        ListDumpGraph           (List *lst);
-
-void        ListDumpGraphHeaders    (List *lst);
-void        ListDumpGraphInfoNode   (int anch, const char *name, const char *fillcolor);
-
-void        ListDumpGraphNode       (List *lst, int anch, const char *fillcolor);
-
-void        ListDumpGraphNodeRecord (List *lst, int anch, const char *fillcolor);
-void        ListDumpGraphNodeEdges  (List *lst, int anch);
-
-void        ListDumpGraphEdge       (int anch1, int anch2, const char *color);
-
-bool        isBadPtr (void *ptr);
-int32_t     min      (int32_t a, int32_t b);
-int32_t     max      (int32_t a, int32_t b);
 
 #endif  // LIST_H
  

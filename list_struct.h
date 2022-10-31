@@ -1,6 +1,8 @@
 #ifndef LIST_STRUCT_H
 #define LIST_STRUCT_H
 
+#include "list_debug.h"
+
 struct Node
 {
     int32_t val;
@@ -11,14 +13,19 @@ struct Node
 
 struct List
 {
-    int32_t  size;
-    int32_t  cap;
+    int32_t   size;
+    int32_t   cap;
 
-    Node    *buf;
+    Node     *buf;
 
-    int32_t  free;
+    int32_t   free;
 
-    bool     is_linearized; 
+    bool      is_linearized; 
+
+ON_DEBUG
+(
+    DebugInfo info;
+)
 };
 
 #endif  // LIST_STRUCT_H
