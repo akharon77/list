@@ -4,22 +4,41 @@
 #include "list_debug.h"
 #include "list.h"
 
-const char * const COLOR_NODE_EMPTY     = "#56B13A";
-const char * const COLOR_NODE_FILLED    = "#C64153";
-const char * const COLOR_NODE_ROOT      = "#A4B5B0";
-const char * const COLOR_NODE_INFO_HEAD = "#D07B44";
-const char * const COLOR_NODE_INFO_TAIL = "#2B8574";
-const char * const COLOR_EDGE_FILLED    = "#2F8F66";
-const char * const COLOR_EDGE_NEXT      = "#2F8F66";
-const char * const COLOR_EDGE_PREV      = "#48afd0";
-const char * const COLOR_EDGE_EMPTY     = "#558006";
+const char* const COLOR_NODE_EMPTY     = "#56B13A";
+const char* const COLOR_NODE_FILLED    = "#C64153";
+const char* const COLOR_NODE_ROOT      = "#A4B5B0";
+const char* const COLOR_NODE_INFO_HEAD = "#D07B44";
+const char* const COLOR_NODE_INFO_TAIL = "#2B8574";
+const char* const COLOR_EDGE_FILLED    = "#2F8F66";
+const char* const COLOR_EDGE_NEXT      = "#2F8F66";
+const char* const COLOR_EDGE_PREV      = "#48afd0";
+const char* const COLOR_EDGE_EMPTY     = "#558006";
 
-int32_t ListInitLog()
+void ListLogInit()
 {
-    int32_t fd_dump = creat("list_log.html", S_IRWXU);
-    
+    int32_t fd_dump = ListGetLogFd();
     dprintf(fd_dump, "<pre>");
+}
 
+void ListLogClose()
+{
+    int32_t fd_dump = ListGetLogFd();
+    close(fd_dump);
+}
+
+void ListLog(List *lst)
+{
+    int32_t fd_dump = ListGetLogFd();
+
+    ListDump(lst, fd_dump);
+    ListDumpGraph(lst, fd_dump);
+
+    dprintf(fd_dump, "<hr>\n--------------------------------------------------------------------\n");
+}
+
+int32_t ListGetLogFd()
+{
+    static int32_t fd_dump = creat("./dump/list_log.html", S_IRWXU);
     return fd_dump;
 }
 
@@ -43,7 +62,16 @@ uint32_t ListStatus(List *lst)
 
     uint32_t flags = 0;
 
-    if (ListGetSize(lst) < 0)
+    int32_t poisoned = 0;
+
+    for (int32_t i = 0; i < sizeof(List) / sizeof(int64_t); ++i)
+        if (*((int64_t*)(lst) + i) == POISON)
+            ++poisoned;
+
+    if (poisoned > POISIONED_PERC * sizeof(List))
+        flags |= ERROR_POISIONED_STRUCT;
+
+    if (lst->size < 0)
         flags |= ERROR_SIZE_NEG;
 
     if (lst->cap  < 0)
@@ -52,14 +80,14 @@ uint32_t ListStatus(List *lst)
     if (isBadPtr(lst->buf))
         flags |= ERROR_BUF_BAD_PTR;
 
-    if (ListGetFree(lst) > ListGetCapacity(lst) || lst->buf[ListGetFree(lst)].prev != -1)
+    if (lst->free != -1 && (lst->free < lst->cap || lst->buf[lst->free].prev != -1))
         flags |= ERROR_FREE_INCORR;
 
     if (flags)
         return flags;
 
     int32_t cnt_not_empty = 0;
-    for (int32_t i = 0; i < ListGetCapacity(lst); ++i)
+    for (int32_t i = 0; i < lst->cap; ++i)
     {
         if (lst->buf[i].prev != -1)
         {
@@ -144,11 +172,12 @@ void ListDump(List *lst, int32_t fd_dump)
                          i, lst->buf[i].val, lst->buf[i].next, lst->buf[i].prev);
 
     dprintf(fd_dump, "}\n");
+
 }
 
 void ListDumpGraph(List *lst, int32_t fd_dump)
 {
-    const char *fd_dump_graph_filename = ".list_dump_graph.txt";
+    const char *fd_dump_graph_filename = "./dump/.list_dump_graph.txt";
     static int32_t cnt = 0;
 
     int32_t fd_dump_graph = creat(fd_dump_graph_filename, S_IRWXU);
@@ -171,11 +200,11 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
     close(fd_dump_graph);
 
     char cmd[256] = "";
-    sprintf(cmd, "dot ./%s -o list_graph%d.svg -Tsvg", 
+    sprintf(cmd, "dot %s -o ./dump/list_graph%d.svg -Tsvg", 
                  fd_dump_graph_filename, cnt);
     system(cmd);
 
-    dprintf(fd_dump, "<img src=\"list_graph%d.svg\" width = 500>\n",
+    dprintf(fd_dump, "<img src=\"list_graph%d.svg\" height = 300>\n",
                      cnt);
 
     ++cnt;
@@ -183,6 +212,8 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
 
 void ListDumpGraphHeaders(List *lst, int32_t fd_dump)
 {
+    ASSERT(!isBadPtr(lst));
+
     ListDumpGraphInfoNode (DUMP_NODE_HEAD, "head", COLOR_NODE_INFO_HEAD, fd_dump);
     ListDumpGraphEdge     (DUMP_NODE_HEAD, ListGetHead(lst), COLOR_EDGE_FILLED, fd_dump);
 

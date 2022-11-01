@@ -21,14 +21,17 @@ do {                                                        \
     #define ON_DEBUG(...)
 #endif
 
-#define ListOk(lst, fd_dump)                                                 \
+#define ListOk(lst)                                                          \
 do                                                                           \
 {                                                                            \
+    int32_t fd_dump = ListGetLogFd();                                        \
     dprintf(fd_dump, "ListOk() is called from function: %s, file: %s(%d)\n", \
                       __PRETTY_FUNCTION__, __FILE__, __LINE__);              \
-    ListDump(lst, fd_dump);                                                  \
+    ASSERT(ListStatus(lst) == 0);                                            \
 }                                                                            \
 while(0)
+
+const double   POISIONED_PERC         = 0.7;
 
 const uint32_t ERROR_SIZE_NEG         = 1 << 0;
 const uint32_t ERROR_BUF_BAD_PTR      = 1 << 1;
@@ -57,7 +60,10 @@ const int32_t  DUMP_NODE_FREE = 2147483647;
 
 const int64_t  POISON         = 0xDEADBEEF1451DE1ll;
 
-int32_t     ListInitLog             ();
+int32_t     ListGetLogFd            ();
+void        ListLog                 (List *lst);
+void        ListLogInit             ();
+void        ListLogClose            ();
 void        ListPrint               (List *lst);
 
 uint32_t    ListStatus              (List *lst);
