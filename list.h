@@ -46,6 +46,7 @@ int32_t     ListGetHead             (List *lst);
 int32_t     ListGetTail             (List *lst);
 int32_t     ListGetFree             (List *lst);
      
+int32_t     ListGetAnch             (List *lst, int32_t ind);
 int32_t     ListGetNext             (List *lst, int32_t anch);
 int32_t     ListGetPrev             (List *lst, int32_t anch);
 

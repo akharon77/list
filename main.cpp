@@ -11,12 +11,16 @@ int main()
     ListPushBack(&lst, 1);
     ListPushBack(&lst, 2);
     ListPushBack(&lst, 3);
-    ListPushBack(&lst, 4);
-    ListPushBack(&lst, 5);
-    ListPushBack(&lst, 6);
+
+    int32_t anch4 = ListPushFront(&lst, 4);
+    ListPushFront(&lst, 5);
+    ListPushFront(&lst, 6);
+
     ListPushBack(&lst, 7);
     ListPushBack(&lst, 8);
     ListPushBack(&lst, 9);
+
+    ListErase(&lst, anch4);
 
     ListLinearize(&lst);
 

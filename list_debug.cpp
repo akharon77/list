@@ -80,14 +80,11 @@ uint32_t ListStatus(List *lst)
     if (isBadPtr(lst->buf))
         flags |= ERROR_BUF_BAD_PTR;
 
-    if (lst->free != -1 && (lst->free < lst->cap || lst->buf[lst->free].prev != -1))
-        flags |= ERROR_FREE_INCORR;
-
     if (flags)
         return flags;
 
     int32_t cnt_not_empty = 0;
-    for (int32_t i = 0; i < lst->cap; ++i)
+    for (int32_t i = 1; i < lst->cap + 1; ++i)
     {
         if (lst->buf[i].prev != -1)
         {
@@ -96,13 +93,13 @@ uint32_t ListStatus(List *lst)
                 ListGetNext(lst, ListGetPrev(lst, i)) != i)
                 flags |= ERROR_COMM_VIOL;
         }
-        else if (lst->buf[lst->buf[i].next].prev != -1)
+        else if (lst->buf[i].next != -1 && lst->buf[lst->buf[i].next].prev != -1)
         {
             flags |= ERROR_FREE_VIOL;
         }
     }
 
-    if (cnt_not_empty - 1 != ListGetSize(lst))
+    if (cnt_not_empty != ListGetSize(lst))
         flags |= ERROR_SIZE_MISMATCH;
 
     return flags;

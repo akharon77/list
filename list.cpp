@@ -199,7 +199,7 @@ int32_t ListInsertAfter(List *lst, int32_t val, int32_t anch)
 void ListErase(List *lst, int32_t anch)
 {
     ASSERT(lst != NULL);
-    ASSERT(anch < lst->size + 1 && anch > -1);
+    ASSERT(anch < lst->size + 1 && anch > 0);
     ListOk(lst);
 
     if (lst->size < lst->cap / 4)
@@ -247,6 +247,22 @@ void ListPopBack(List *lst)
 void ListPopFront(List *lst)
 {
     ListErase(lst, ListGetHead(lst));
+}
+
+int32_t ListGetAnch(List *lst, int32_t ind)
+{
+    ASSERT(ind < lst->size && ind > 0);
+
+    if (lst->is_linearized)
+        return ind;
+
+    int32_t vertex = ROOT;
+    int32_t i      = 0;
+
+    for (int32_t i = 0; i < ind; ++i)
+        vertex = ListGetNext(lst, vertex);
+
+    return vertex;
 }
 
 int32_t ListGetNext(List *lst, int32_t anch)
