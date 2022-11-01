@@ -27,6 +27,8 @@ do                                                                           \
     int32_t fd_dump = ListGetLogFd();                                        \
     dprintf(fd_dump, "ListOk() is called from function: %s, file: %s(%d)\n", \
                       __PRETTY_FUNCTION__, __FILE__, __LINE__);              \
+    uint32_t flags = ListStatus(lst);                                        \
+    dprintf(fd_dump, "%s\n", ListErrorDesc(flags));                          \
     ASSERT(ListStatus(lst) == 0);                                            \
 }                                                                            \
 while(0)
@@ -72,7 +74,6 @@ const char* ListErrorDesc           (uint32_t flags);
 void        ListDump                (List *lst, int32_t fd_dump);
 void        ListDumpGraph           (List *lst, int32_t fd_dump);
 
-void        ListDumpGraphHeaders    (List *lst, int32_t fd_dump);
 void        ListDumpGraphInfoNode   (int anch, const char *name, const char *fillcolor, int32_t fd_dump);
 
 void        ListDumpGraphNode       (List *lst, int anch, const char *fillcolor, int32_t fd_dump);
@@ -80,7 +81,7 @@ void        ListDumpGraphNode       (List *lst, int anch, const char *fillcolor,
 void        ListDumpGraphNodeRecord (List *lst, int anch, const char *fillcolor, int32_t fd_dump);
 void        ListDumpGraphNodeEdges  (List *lst, int anch, int32_t fd_dump);
 
-void        ListDumpGraphEdge       (int anch1, int anch2, const char *color, int32_t fd_dump);
+void        ListDumpGraphEdge       (int anch1, int anch2, const char *color, int32_t weight, int32_t fd_dump);
 
 bool        isBadPtr                (void *ptr);
 int32_t     min                     (int32_t a, int32_t b);

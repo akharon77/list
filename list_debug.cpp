@@ -179,24 +179,33 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
 
     int32_t fd_dump_graph = creat(fd_dump_graph_filename, S_IRWXU);
 
-    dprintf(fd_dump_graph, "digraph G{rankdir=LR;");
+    dprintf(fd_dump_graph, "digraph G{\nsplines=ortho;\nranksep=1;\n");
+    dprintf(fd_dump_graph, "{rank=min;\n");
+    ListDumpGraphInfoNode (DUMP_NODE_HEAD, "head", COLOR_NODE_INFO_HEAD, fd_dump_graph);
+    ListDumpGraphInfoNode (DUMP_NODE_TAIL, "tail", COLOR_NODE_INFO_TAIL, fd_dump_graph);
+    ListDumpGraphInfoNode (DUMP_NODE_FREE, "free", COLOR_NODE_EMPTY,     fd_dump_graph);
+    dprintf(fd_dump_graph, "}\n");
 
-    ListDumpGraphNode(lst, 0, COLOR_NODE_ROOT, fd_dump_graph);
-
-    // for (int32_t anch = ListGetCapacity(lst); anch > 0; --anch)
-    //     ListDumpGraphEdge(ListGetPrev(lst, anch), anch, "#00000000", fd_dump_graph);
-
-    for (int32_t anch = 1; anch < ListGetCapacity(lst) + 1; ++anch)
-    {
+    dprintf(fd_dump_graph, "{rank=same;\n");
+    ListDumpGraphNodeRecord(lst, 0, COLOR_NODE_ROOT, fd_dump_graph);
+    for (int32_t anch = 1; anch < lst->cap + 1; ++anch)
         if (ListIsEmptyNode(lst, anch))
-            ListDumpGraphNode (lst, anch, COLOR_NODE_EMPTY, fd_dump_graph);
+            ListDumpGraphNodeRecord(lst, anch, COLOR_NODE_EMPTY, fd_dump_graph);
         else
-            ListDumpGraphNode (lst, anch, COLOR_NODE_FILLED, fd_dump_graph);
-    }
+            ListDumpGraphNodeRecord(lst, anch, COLOR_NODE_FILLED, fd_dump_graph);
+    dprintf(fd_dump_graph, "}\n");
+
+    for (int32_t anch = 0; anch < lst->cap; ++anch)
+        ListDumpGraphEdge(anch, anch + 1, "#00000000", 100, fd_dump_graph);
     
-    ListDumpGraphHeaders(lst, fd_dump_graph);
+    for (int32_t anch = 0; anch < ListGetCapacity(lst) + 1; ++anch)
+        ListDumpGraphNodeEdges(lst, anch, fd_dump_graph);
 
+    ListDumpGraphEdge(DUMP_NODE_HEAD, ListGetHead(lst), COLOR_EDGE_NEXT, 0, fd_dump_graph);
+    ListDumpGraphEdge(DUMP_NODE_TAIL, ListGetTail(lst), COLOR_EDGE_NEXT, 0, fd_dump_graph);
+    ListDumpGraphEdge(DUMP_NODE_FREE, ListGetFree(lst), COLOR_EDGE_NEXT, 0, fd_dump_graph);
 
+    dprintf(fd_dump_graph, "{rank=max;nodemax[style=invis];} node0->nodemax[color=\"#00000000\"];");
     dprintf(fd_dump_graph, "}\n");
 
     close(fd_dump_graph);
@@ -210,20 +219,6 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
                      cnt);
 
     ++cnt;
-}
-
-void ListDumpGraphHeaders(List *lst, int32_t fd_dump)
-{
-    ASSERT(!isBadPtr(lst));
-
-    ListDumpGraphInfoNode (DUMP_NODE_HEAD, "head", COLOR_NODE_INFO_HEAD, fd_dump);
-    ListDumpGraphEdge     (DUMP_NODE_HEAD, ListGetHead(lst), COLOR_EDGE_FILLED, fd_dump);
-
-    ListDumpGraphInfoNode (DUMP_NODE_TAIL, "tail", COLOR_NODE_INFO_TAIL, fd_dump);
-    ListDumpGraphEdge     (DUMP_NODE_TAIL, ListGetTail(lst), COLOR_EDGE_FILLED, fd_dump);
-
-    ListDumpGraphInfoNode (DUMP_NODE_FREE, "free", COLOR_EDGE_EMPTY, fd_dump);
-    ListDumpGraphEdge     (DUMP_NODE_FREE, ListGetFree(lst), COLOR_EDGE_EMPTY, fd_dump);
 }
 
 void ListDumpGraphInfoNode(int anch, const char *name, const char *fillcolor, int32_t fd_dump)
@@ -240,7 +235,7 @@ void ListDumpGraphNode(List *lst, int anch, const char *fillcolor, int32_t fd_du
 
 void ListDumpGraphNodeRecord(List *lst, int anch, const char *fillcolor, int32_t fd_dump)
 {
-    dprintf(fd_dump, "node%d[shape=record, style=\"filled\", fillcolor=\"%s\", label = \"ind: %d | val: %d | {prev: %d | next: %d}\"];\n", 
+    dprintf(fd_dump, "node%d[shape=record, style=\"filled\", fillcolor=\"%s\", label = \"{ind: %d | val: %d | {prev: %d | next: %d}}\", width=2, height=1, fixedsize=true];\n", 
             anch, fillcolor, anch, ListGetValue(lst, anch), ListGetPrev(lst, anch), ListGetNext(lst, anch));
 }
 
@@ -249,15 +244,15 @@ void ListDumpGraphNodeEdges(List *lst, int anch, int32_t fd_dump)
     int32_t next = ListGetNext(lst, anch),
             prev = ListGetPrev(lst, anch);
 
-    ListDumpGraphEdge(anch, next, COLOR_EDGE_NEXT, fd_dump);
-    ListDumpGraphEdge(anch, prev, COLOR_EDGE_PREV, fd_dump);
+    ListDumpGraphEdge(anch, next, COLOR_EDGE_NEXT, 0, fd_dump);
+    ListDumpGraphEdge(anch, prev, COLOR_EDGE_PREV, 0, fd_dump);
 }
 
-void ListDumpGraphEdge(int anch1, int anch2, const char *color, int32_t fd_dump)
+void ListDumpGraphEdge(int anch1, int anch2, const char *color, int32_t weight, int32_t fd_dump)
 {
     if (anch1 != -1 && anch2 != -1)
-        dprintf(fd_dump, "node%d->node%d[color=\"%s\"];\n",
-                anch1, anch2, color);
+        dprintf(fd_dump, "node%d->node%d[color=\"%s\", weight=%d, penwidth=3, minlen=3];\n",
+                anch1, anch2, color, weight);
 }
 
 int32_t min(int32_t a, int32_t b)

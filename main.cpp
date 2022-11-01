@@ -10,19 +10,13 @@ int main()
     
     ListPushBack(&lst, 1);
     ListPushBack(&lst, 2);
-    ListPushBack(&lst, 3);
 
-    int32_t anch4 = ListPushFront(&lst, 4);
-    ListPushFront(&lst, 5);
-    ListPushFront(&lst, 6);
+    for (int i = 0; i < 5; ++i)
+        ListPushBack(&lst, i*2);
 
-    ListPushBack(&lst, 7);
-    ListPushBack(&lst, 8);
-    ListPushBack(&lst, 9);
+    ListErase(&lst, 4);
 
-    ListErase(&lst, anch4);
-
-    ListLinearize(&lst);
+    ListPushFront(&lst, 42);
 
     ListLogClose();
     return 0;
