@@ -25,7 +25,7 @@ do {                                                        \
 do                                                                           \
 {                                                                            \
     int32_t fd_dump = ListGetLogFd();                                        \
-    dprintf(fd_dump, "ListOk() is called from function: %s, file: %s(%d)\n", \
+    dprintf(fd_dump, "<h2>ListOk() is called from function: %s, file: %s(%d)</h2>", \
                       __PRETTY_FUNCTION__, __FILE__, __LINE__);              \
     uint32_t flags = ListStatus(lst);                                        \
     dprintf(fd_dump, "%s\n", ListErrorDesc(flags));                          \

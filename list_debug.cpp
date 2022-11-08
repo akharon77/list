@@ -33,7 +33,7 @@ void ListLog(List *lst)
     ListDump(lst, fd_dump);
     ListDumpGraph(lst, fd_dump);
 
-    dprintf(fd_dump, "<hr>\n--------------------------------------------------------------------\n");
+    dprintf(fd_dump, "<hr>\n<h2>----------------------------------------------------------------------------------------<h2>");
 }
 
 int32_t ListGetLogFd()
@@ -179,7 +179,7 @@ void ListDumpGraph(List *lst, int32_t fd_dump)
 
     int32_t fd_dump_graph = creat(fd_dump_graph_filename, S_IRWXU);
 
-    dprintf(fd_dump_graph, "digraph G{\nsplines=ortho;\nranksep=1;\n");
+    dprintf(fd_dump_graph, "digraph G{\nsplines=ortho;\nranksep=1;\noverlap=voronoi;\n");
     dprintf(fd_dump_graph, "{rank=min;\n");
     ListDumpGraphInfoNode (DUMP_NODE_HEAD, "head", COLOR_NODE_INFO_HEAD, fd_dump_graph);
     ListDumpGraphInfoNode (DUMP_NODE_TAIL, "tail", COLOR_NODE_INFO_TAIL, fd_dump_graph);
